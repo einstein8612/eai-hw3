@@ -402,6 +402,10 @@ class ModelBasedAgent():
         loss_dict = {}
         ############################ Begin Code ############################
         # Maintain your own log dict to keep track of losses, gradients, etc. You can then visualize these in tensorboard.
-        # loss_dict = ???
+        loss_dict = {
+            "dynamics_loss": dynamics_loss,
+			"reward_loss": reward_loss,
+			"weighted_loss": weighted_loss
+		}
         ############################# End Code #############################
         return loss_dict
