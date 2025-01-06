@@ -48,7 +48,7 @@ class LearnedModel(nn.Module):
         x = torch.cat([z, a], dim=-1)
         ############################ Begin Code Q4.1 ############################
         # call self._dynamics and self._reward to get next state and reward
-        raise NotImplementedError("Q4.1")
+        return self._dynamics(x), self._reward(x)
         ############################# End Code Q4.1 #############################
 
     def pi(self, z, std=0):
@@ -78,7 +78,9 @@ class LearnedModel(nn.Module):
         """Update observation statistics used for normalization."""
         ############################ Begin Code Q4.1 ############################
         # update self.obs_delta_mean and self.obs_delta_std
-        raise NotImplementedError("Q4.1")
+        obs_delta = next_obs-obs
+        self.obs_delta_mean = torch.Tensor(obs_delta).mean(0)
+        self.obs_delta_std = torch.Tensor(obs_delta).std(0)
         ############################# End Code Q4.1 #############################
 
 
@@ -368,7 +370,14 @@ class ModelBasedAgent():
             # hint 3: in Q5, when computing the TD-target, call self._td_target. Remember to detach the target.
             # hint 4: in Q5, priority_loss is the L1 loss between Q-values and TD-targets
             # hint 5: in Q5, you should wrap your code with a check of self.cfg.use_td
-            pass
+            
+            # Predict next state and reward
+            z, reward_pred = self.model.next(z, action[t])
+            # Losses
+            weight = (self.cfg.rho ** t)
+            dynamics_loss += weight * torch.mean(h.mse(z, next_obses[t]), dim=1, keepdim=True)
+            reward_loss += weight * h.mse(reward_pred, reward[t])
+            
             ############################# End Code Q4.2, Q5 #############################
         total_loss = self.cfg.dynamics_coef * dynamics_loss.clamp(max=1e4) + \
             self.cfg.reward_coef * reward_loss.clamp(max=1e4)
