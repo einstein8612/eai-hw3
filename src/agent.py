@@ -251,8 +251,8 @@ class ModelBasedAgent():
             ############################# End Code Q1 #############################
 
         # Initialize state and parameters
-        # z = obs.repeat(self.cfg.num_samples+num_pi_trajs, 1)
-        z = obs.repeat(self.cfg.num_samples, 1)
+        z = obs.repeat(self.cfg.num_samples+num_pi_trajs, 1)
+        # z = obs.repeat(self.cfg.num_samples, 1)
         mean = torch.zeros(horizon, self.cfg.action_dim, device=self.device)
         std = 2*torch.ones(horizon, self.cfg.action_dim, device=self.device)
         if not t0 and hasattr(self, '_prev_mean'):
@@ -420,9 +420,11 @@ class ModelBasedAgent():
         ############################ Begin Code ############################
         # Maintain your own log dict to keep track of losses, gradients, etc. You can then visualize these in tensorboard.
         loss_dict = {
-            "dynamics_loss": dynamics_loss,
-			"reward_loss": reward_loss,
-			"weighted_loss": weighted_loss
+            "dynamics_loss": dynamics_loss.mean(),
+			"reward_loss": reward_loss.mean(),
+            "value_loss": value_loss.mean(),
+            "priority_loss": priority_loss.mean(),
+			"weighted_loss": weighted_loss.mean()
 		}
         ############################# End Code #############################
         return loss_dict
