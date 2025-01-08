@@ -71,7 +71,7 @@ class LearnedModel(nn.Module):
     def V(self, z):
         """Predict state value (V)."""
         ############################ Begin Code Q5.1 ############################
-        raise NotImplementedError("Q5.1")
+        return torch.min(*self.Q(z, self.pi(z, self.cfg.min_std)))
         ############################# End Code Q5.1 #############################
 
     def update_statistics(self, obs, acs, next_obs):
@@ -198,8 +198,7 @@ class ModelBasedAgent():
             z, reward = self.model.next(z, actions[t])
             G += discount * reward
             discount *= self.cfg.discount
-        # G += discount * \
-        #     torch.min(*self.model.Q(z, self.model.pi(z, self.cfg.min_std)))
+        G += discount * self.model.V(z)
 
         # for t in range(horizon):
         #     call self.model.next to get next state and reward
@@ -270,8 +269,8 @@ class ModelBasedAgent():
                 # Get actions from current distribution, clamp for action space
                 actions = torch.clamp(mean.unsqueeze(1) + std.unsqueeze(1) *
                                       torch.randn(horizon, self.cfg.num_samples, self.cfg.action_dim, device=std.device), -1, 1)
-                # if num_pi_trajs > 0:
-                #     actions = torch.cat([actions, pi_actions], dim=1)
+                if num_pi_trajs > 0:
+                    actions = torch.cat([actions, pi_actions], dim=1)
 
                 # Calculate rewards for all actions
                 value = self.estimate_value(z, actions)
@@ -295,8 +294,8 @@ class ModelBasedAgent():
                 # Get actions from current distribution, clamp for action space
                 actions = torch.clamp(mean.unsqueeze(1) + std.unsqueeze(1) *
                                       torch.randn(horizon, self.cfg.num_samples, self.cfg.action_dim, device=std.device), -1, 1)
-                # if num_pi_trajs > 0:
-                #     actions = torch.cat([actions, pi_actions], dim=1)
+                if num_pi_trajs > 0:
+                    actions = torch.cat([actions, pi_actions], dim=1)
 
                 # Calculate rewards for all actions
                 value = self.estimate_value(z, actions)
@@ -332,7 +331,10 @@ class ModelBasedAgent():
 
         pi_loss = 0
         ############################ Begin Code Q5.3 ############################
-        # pi_loss = ???
+        for t,z in enumerate(zs):
+            a = self.model.pi(z, self.cfg.min_std)
+            Q = torch.min(*self.model.Q(z, a))
+            pi_loss += -Q.mean() * (self.cfg.rho ** t)
         ############################# End Code Q5.3 #############################
 
         pi_loss.backward()
@@ -346,7 +348,8 @@ class ModelBasedAgent():
     def _td_target(self, next_z, reward):
         """Compute the TD-target from a reward and the observation at the following time step."""
         ############################ Begin Code Q5.2 ############################
-        # td_target = ???
+        td_target = reward + self.cfg.discount * \
+			torch.min(*self.model_target.Q(next_z, self.model.pi(next_z, self.cfg.min_std)))
         ############################# End Code Q5.2 #############################
         return td_target
 
@@ -373,10 +376,21 @@ class ModelBasedAgent():
             
             # Predict next state and reward
             z, reward_pred = self.model.next(z, action[t])
+            zs.append(z.detach())
             # Losses
             weight = (self.cfg.rho ** t)
             dynamics_loss += weight * torch.mean(h.mse(z, next_obses[t]), dim=1, keepdim=True)
             reward_loss += weight * h.mse(reward_pred, reward[t])
+            
+            # 5.4 Losses
+            
+            if self.cfg.use_td:
+                Q1, Q2 = self.model.Q(z, action[t])
+                with torch.no_grad():
+                    td_target = self._td_target(next_obses[t], reward[t])
+
+                value_loss += weight * (h.mse(Q1, td_target) + h.mse(Q2, td_target))
+                priority_loss += weight * (h.l1(Q1, td_target) + h.l1(Q2, td_target))
             
             ############################# End Code Q4.2, Q5 #############################
         total_loss = self.cfg.dynamics_coef * dynamics_loss.clamp(max=1e4) + \
@@ -395,7 +409,10 @@ class ModelBasedAgent():
             # Update replay buffer priorities: replay_buffer.update_priorities(idxs, priority_loss.clamp(max=1e4).detach())
             # Update policy by calling self.update_pi
             # Update target network by calling h.ema
-            pass
+            replay_buffer.update_priorities(idxs, priority_loss.clamp(max=1e4).detach())
+            pi_loss = self.update_pi(zs)
+            if step % self.cfg.update_freq == 0:
+                h.ema(self.model, self.model_target, self.cfg.tau)
             ############################# End Code Q5.3 #############################
 
         self.model.eval()
