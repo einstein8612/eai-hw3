@@ -289,6 +289,8 @@ class ModelBasedAgent():
                 mean = torch.sum(elite_actions, dim=1) / self.cfg.num_elites
                 std = torch.sqrt(torch.sum((elite_actions - mean.unsqueeze(1))
                                  ** 2, dim=1) / self.cfg.num_elites)
+                # STD shouldn't go down below it's default, and it should be linearly going down as described in the paper
+                std = std.clamp(self.std, 2)
 
             self._prev_mean = mean
             return mean[0]
@@ -317,10 +319,10 @@ class ModelBasedAgent():
                 
                 mean = torch.sum(score.unsqueeze(0) * elite_actions, dim=1) / score.sum(0)
                 std = torch.sqrt(torch.sum(score.unsqueeze(0) * (elite_actions - mean.unsqueeze(1)) ** 2, dim=1) / score.sum(0))
+                # STD shouldn't go down below it's default, and it should be linearly going down as described in the paper
+                std = std.clamp(self.std, 2)
 
             self._prev_mean = mean
-            
-            # return mean[0]
             
             # Pick randomly from elite actions, higher chance to get the better though
             score = score.squeeze(1).cpu().numpy()
@@ -380,11 +382,11 @@ class ModelBasedAgent():
             # hint 5: in Q5, you should wrap your code with a check of self.cfg.use_td
             
             # Predict next state and reward
-            z, reward_pred = self.model.next(z, action[t])
-            zs.append(z.detach())
+            next_z, reward_pred = self.model.next(z, action[t])
+            zs.append(next_z.detach())
             # Losses
             weight = (self.cfg.rho ** t)
-            dynamics_loss += weight * torch.mean(h.mse(z, next_obses[t]), dim=1, keepdim=True)
+            dynamics_loss += weight * torch.mean(h.mse(next_z, next_obses[t]), dim=1, keepdim=True)
             reward_loss += weight * h.mse(reward_pred, reward[t])
             
             # 5.4 Losses
