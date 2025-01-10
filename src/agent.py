@@ -235,9 +235,12 @@ class ModelBasedAgent():
         if num_pi_trajs > 0:
             ############################ Begin Code Q5.4 ############################
             # sample num_pi_trajs policy trajectories using self.model.pi
-            # pi_actions = ???
             pi_actions = torch.empty(
                 horizon, num_pi_trajs, self.cfg.action_dim, device=self.device)
+            z = obs.repeat(num_pi_trajs, 1)
+            for t in range(horizon):
+                pi_actions[t] = self.model.pi(z, self.cfg.min_std)
+                z, _ = self.model.next(z, pi_actions[t])
             ############################# End Code Q5.4 #############################
 
         if self.cfg.mpc_algo == "random":
@@ -251,8 +254,10 @@ class ModelBasedAgent():
             ############################# End Code Q1 #############################
 
         # Initialize state and parameters
-        z = obs.repeat(self.cfg.num_samples+num_pi_trajs, 1)
-        # z = obs.repeat(self.cfg.num_samples, 1)
+        if self.cfg.use_td:
+            z = obs.repeat(self.cfg.num_samples+num_pi_trajs, 1)
+        else:
+            z = obs.repeat(self.cfg.num_samples, 1)
         mean = torch.zeros(horizon, self.cfg.action_dim, device=self.device)
         std = 2*torch.ones(horizon, self.cfg.action_dim, device=self.device)
         if not t0 and hasattr(self, '_prev_mean'):
