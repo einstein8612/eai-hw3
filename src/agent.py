@@ -407,6 +407,10 @@ class ModelBasedAgent():
 
                 value_loss += weight * (h.mse(Q1, td_target) + h.mse(Q2, td_target))
                 priority_loss += weight * (h.l1(Q1, td_target) + h.l1(Q2, td_target))
+                
+            
+            # recurrently predict the next state and reward from last predicted state
+            z = next_z
             
             ############################# End Code Q4.2, Q5 #############################
         total_loss = self.cfg.dynamics_coef * dynamics_loss.clamp(max=1e4) + \
