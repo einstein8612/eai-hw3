@@ -430,9 +430,10 @@ class ModelBasedAgent():
         loss_dict = {
             "dynamics_loss": dynamics_loss.mean(),
 			"reward_loss": reward_loss.mean(),
-            "value_loss": value_loss.mean(),
-            "priority_loss": priority_loss.mean(),
 			"weighted_loss": weighted_loss.mean()
 		}
+        if self.cfg.use_td:
+            loss_dict["value_loss"] = value_loss.mean()
+            loss_dict["priority_loss"] = priority_loss.mean()
         ############################# End Code #############################
         return loss_dict
