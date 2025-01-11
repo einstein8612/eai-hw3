@@ -435,5 +435,6 @@ class ModelBasedAgent():
         if self.cfg.use_td:
             loss_dict["value_loss"] = value_loss.mean()
             loss_dict["priority_loss"] = priority_loss.mean()
+            loss_dict["pi_loss"] = pi_loss
         ############################# End Code #############################
         return loss_dict
