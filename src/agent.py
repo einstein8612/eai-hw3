@@ -328,7 +328,12 @@ class ModelBasedAgent():
             # Pick randomly from elite actions, higher chance to get the better though
             score = score.squeeze(1).cpu().numpy()
             actions = elite_actions[:, np.random.choice(np.arange(score.shape[0]), p=score), :]
-            return actions[0]
+            
+            action = actions[0]
+            if not eval_mode:
+                action += std * torch.randn(self.cfg.action_dim, device=std.device) 
+            
+            return action
 
         ############################ End Code Q2,Q3,Q5.4 ############################
 
