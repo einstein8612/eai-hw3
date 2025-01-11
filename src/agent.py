@@ -198,7 +198,8 @@ class ModelBasedAgent():
             z, reward = self.model.next(z, actions[t])
             G += discount * reward
             discount *= self.cfg.discount
-        G += discount * self.model.V(z)
+        if self.cfg.use_td:
+            G += discount * self.model.V(z)
 
         # for t in range(horizon):
         #     call self.model.next to get next state and reward
