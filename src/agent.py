@@ -318,8 +318,8 @@ class ModelBasedAgent():
                 score = torch.exp(self.cfg.temperature*(elite_value - max_elite_value))
                 score /= score.sum(0)
                 
-                mean = torch.sum(score.unsqueeze(0) * elite_actions, dim=1) / score.sum(0)
-                std = torch.sqrt(torch.sum(score.unsqueeze(0) * (elite_actions - mean.unsqueeze(1)) ** 2, dim=1) / score.sum(0))
+                mean = torch.sum(score.unsqueeze(0) * elite_actions, dim=1) / (score.sum(0) + 1e-9)
+                std = torch.sqrt(torch.sum(score.unsqueeze(0) * (elite_actions - mean.unsqueeze(1)) ** 2, dim=1) / (score.sum(0) + 1e-9))
                 # STD shouldn't go down below it's default, and it should be linearly going down as described in the paper
                 std = std.clamp(self.std, 2)
 
@@ -331,7 +331,7 @@ class ModelBasedAgent():
             
             action = actions[0]
             if not eval_mode:
-                action += std * torch.randn(self.cfg.action_dim, device=std.device) 
+                action += std[0] * torch.randn(self.cfg.action_dim, device=std.device) 
             
             return action
 
