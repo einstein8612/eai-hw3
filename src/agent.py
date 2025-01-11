@@ -48,7 +48,7 @@ class LearnedModel(nn.Module):
         x = torch.cat([z, a], dim=-1)
         ############################ Begin Code Q4.1 ############################
         # call self._dynamics and self._reward to get next state and reward
-        return self._dynamics(x), self._reward(x)
+        return z + self._dynamics(x), self._reward(x)
         ############################# End Code Q4.1 #############################
 
     def pi(self, z, std=0):
